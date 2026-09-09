@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>국내 거래소 코인 시세 비교</title>
+<meta name="description" content="빗썸·코인원 2개 거래소의 실시간 원화 코인 시세를 한 눈에 비교합니다.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;0,600;0,700;1,500&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EEF1F3;
+    --panel:#FBFCFC;
+    --ink:#161B1F;
+    --ink-soft:#565F66;
+    --ink-faint:#8B949B;
+    --line:#D6DBDE;
+    --line-strong:#161B1F;
+    --house:#223046;
+    --up:#1E7645;
+    --up-tint:#E4F1E9;
+    --down:#B23B3B;
+    --down-tint:#F7E7E7;
+    --gap-tint:#FBF0DD;
+    --gap:#93630D;
+    --maxw:960px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:'Inter',-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .num{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums;}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 20px;}
+
+  .masthead{border-bottom:2px solid var(--line-strong);padding:28px 0 18px;}
+  .masthead .row{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;}
+  .masthead h1{
+    font-family:'Newsreader',serif;font-weight:600;font-style:italic;
+    font-size:30px;margin:0;letter-spacing:0.002em;
+  }
+  .masthead .sub{font-size:13px;color:var(--ink-faint);margin-top:6px;}
+  .masthead .meta{text-align:right;font-size:12.5px;color:var(--ink-faint);}
+  .masthead .meta .updated{color:var(--ink-soft);font-weight:500;}
+  .refresh-btn{
+    margin-top:8px;background:var(--house);color:#fff;border:none;
+    font-size:12.5px;font-weight:600;padding:7px 14px;cursor:pointer;
+    font-family:'Inter',sans-serif;
+  }
+  .refresh-btn:hover{background:#182335;}
+  .refresh-btn:disabled{opacity:0.5;cursor:default;}
+
+  .controls{display:flex;justify-content:space-between;align-items:center;padding:16px 0;gap:12px;flex-wrap:wrap;}
+  .search{
+    flex:1;min-width:180px;border:1px solid var(--line);background:var(--panel);
+    padding:9px 12px;font-size:14px;font-family:'Inter',sans-serif;color:var(--ink);
+  }
+  .search:focus{outline:none;border-color:var(--house);}
+  .currency-note{font-size:12px;color:var(--ink-faint);white-space:nowrap;}
+
+  .exchange-status{
+    display:flex;gap:14px;font-size:12px;color:var(--ink-faint);
+    padding-bottom:12px;flex-wrap:wrap;
+  }
+  .exchange-status span.dot{
+    display:inline-block;width:7px;height:7px;border-radius:50%;
+    margin-right:5px;background:var(--up);
+  }
+  .exchange-status span.dot.fail{background:var(--down);}
+  .exchange-status span.dot.loading{background:var(--ink-faint);}
+
+  .table-scroll{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;min-width:560px;}
+  thead th{
+    text-align:left;font-size:11.5px;letter-spacing:0.02em;color:var(--ink-faint);
+    font-weight:600;padding:0 6px 8px;border-bottom:1px solid var(--line-strong);
+  }
+  thead th.num-col{text-align:right;}
+  tbody td{padding:13px 6px;border-bottom:1px solid var(--line);font-size:14px;}
+  tbody tr:hover{background:var(--panel);}
+  tbody td.num-col{text-align:right;}
+
+  .coin-cell{font-weight:500;}
+  .coin-cell .sym{font-weight:600;}
+  .coin-cell .kr-name{color:var(--ink-faint);font-size:12px;margin-left:7px;font-weight:400;}
+  .price{font-weight:600;}
+  .price .won{font-weight:400;font-size:11.5px;color:var(--ink-faint);margin-left:2px;font-family:'Inter',sans-serif;}
+  .price.missing{color:var(--ink-faint);font-weight:400;}
+  .change{font-size:12.5px;padding:2px 6px;border-radius:2px;margin-left:6px;}
+  .change.up{color:var(--up);background:var(--up-tint);}
+  .change.down{color:var(--down);background:var(--down-tint);}
+  .gap-badge{
+    font-size:12.5px;font-weight:600;padding:3px 8px;border-radius:2px;
+    color:var(--gap);background:var(--gap-tint);
+  }
+
+  .status{padding:40px 0;text-align:center;color:var(--ink-faint);font-size:14px;}
+  .status.error{color:var(--down);}
+
+  footer{padding:22px 0 60px;font-size:12px;color:var(--ink-faint);border-top:1px solid var(--line);margin-top:20px;}
+
+  @media (max-width:600px){
+    .masthead h1{font-size:24px;}
+    tbody td{font-size:13px;padding:12px 4px;}
+    thead th{font-size:10px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="masthead">
+    <div class="row">
+      <div>
+        <h1>국내 거래소 코인 시세 비교</h1>
+        <div class="sub" id="subtitle">빗썸 거래대금 상위 100개 · 코인원 동시 비교 · KRW 기준</div>
+      </div>
+      <div class="meta">
+        <div>마지막 갱신</div>
+        <div class="updated" id="updatedAt">불러오는 중…</div>
+        <button class="refresh-btn" id="refreshBtn">지금 새로고침</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="currency-note">시가총액 1~100위 · 90초마다 자동 갱신</div>
+  </div>
+
+  <div class="exchange-status" id="exchangeStatus">
+    <span><span class="dot loading" id="dotBithumb"></span>빗썸</span>
+    <span><span class="dot loading" id="dotCoinone"></span>코인원</span>
+  </div>
+
+  <div class="table-scroll" id="tableContainer">
+    <div class="status" id="statusMsg">시세를 불러오는 중입니다…</div>
+  </div>
+
+  <footer>
+    데이터 제공: 빗썸·코인원 공개 API (지연 가능성 있음) · 표시된 "차이"는 두 거래소 간 가격 격차입니다 · 투자 판단의 근거로 사용하지 마세요.
+  </footer>
+</div>
+
+<script>
+(function(){
+  const REFRESH_MS = 90000;
+  const TOP_N = 100;
+
+  const els = {
+    table: document.getElementById("tableContainer"),
+    updatedAt: document.getElementById("updatedAt"),
+    refreshBtn: document.getElementById("refreshBtn"),
+    subtitle: document.getElementById("subtitle"),
+    dotBithumb: document.getElementById("dotBithumb"),
+    dotCoinone: document.getElementById("dotCoinone"),
+  };
+
+  let rows = [];
+  let isLoading = false;
+
+  function setDot(el, state){
+    el.className = "dot " + (state === "ok" ? "" : state === "fail" ? "fail" : "loading");
+  }
+
+  function formatKRW(n){
+    if(n === null || n === undefined || isNaN(n)) return null;
+    if(n >= 1) return Math.round(n).toLocaleString("ko-KR");
+    return n.toLocaleString("ko-KR", {maximumSignificantDigits:4});
+  }
+
+  function delay(ms){ return new Promise(resolve => setTimeout(resolve, ms)); }
+
+  async function withRetry(fn, retries, baseDelay){
+    baseDelay = baseDelay || 1000;
+    try {
+      return await fn();
+    } catch(err){
+      if(retries <= 0) throw err;
+      await delay(baseDelay);
+      return withRetry(fn, retries - 1, baseDelay * 2);
+    }
+  }
+
+  // 빗썸 마켓 목록 + 한글 이름 (24시간 정도 캐싱 - 거의 바뀌지 않음)
+  const NAMES_CACHE_KEY = "bithumbNamesCache";
+  const NAMES_CACHE_TTL = 12 * 60 * 60 * 1000; // 12시간
+
+  async function fetchBithumbNames(){
+    try {
+      const cached = JSON.parse(localStorage.getItem(NAMES_CACHE_KEY) || "null");
+      if(cached && cached.map && (Date.now() - cached.savedAt) < NAMES_CACHE_TTL){
+        return cached.map;
+      }
+    } catch(e){ /* 캐시 파싱 실패 시 무시하고 새로 받아온다 */ }
+
+    const res = await fetch("https://api.bithumb.com/v1/market/all?isDetails=false");
+    if(!res.ok) throw new Error("빗썸 마켓 목록 오류 " + res.status);
+    const data = await res.json();
+    const map = {};
+    data.forEach(m => {
+      if(m.market.startsWith("KRW-")) map[m.market.replace("KRW-", "")] = m.korean_name;
+    });
+    try {
+      localStorage.setItem(NAMES_CACHE_KEY, JSON.stringify({ map, savedAt: Date.now() }));
+    } catch(e){ /* 저장 실패해도 동작에는 지장 없음 */ }
+    return map;
+  }
+
+  // 선정된 코인들의 빗썸 시세 조회
+  async function fetchBithumbTicker(marketCodes){
+    const res = await fetch("https://api.bithumb.com/v1/ticker?markets=" + marketCodes.join(","));
+    if(!res.ok) throw new Error("빗썸 시세 오류 " + res.status);
+    const data = await res.json();
+    const map = {};
+    data.forEach(t => {
+      map[t.market.replace("KRW-", "")] = { price: t.trade_price, change: t.signed_change_rate * 100 };
+    });
+    return map;
+  }
+
+  // 시가총액 순위를 못 가져올 때만 사용하는 대체용 빗썸 전체 거래대금 조회 (레거시 API)
+  async function fetchBithumbVolumeAll(){
+    const res = await fetch("https://api.bithumb.com/public/ticker/ALL_KRW");
+    if(!res.ok) throw new Error("빗썸 전체 시세 오류 " + res.status);
+    const data = await res.json();
+    const result = [];
+    Object.keys(data).forEach(sym => {
+      if(sym === "date") return;
+      const t = data[sym];
+      if(t && t.acc_trade_value_24H !== undefined){
+        result.push({ symbol: sym, volume: parseFloat(t.acc_trade_value_24H) || 0 });
+      }
+    });
+    return result;
+  }
+
+  // 글로벌 시가총액 순위 (심볼만, 순위 결정용)
+  async function fetchMarketCapRanking(){
+    const res = await fetch("https://api.coingecko.com/api/v3/coins/markets?vs_currency=krw&order=market_cap_desc&per_page=250&page=1&sparkline=false");
+    if(!res.ok) throw new Error("시가총액 순위 오류 " + res.status);
+    const data = await res.json();
+    return data.map(c => c.symbol.toUpperCase());
+  }
+
+  async function fetchCoinone(){
+    const target = "https://api.coinone.co.kr/public/v2/ticker_new/KRW";
+    const attempts = [
+      () => fetch(target),
+      () => fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(target)),
+      () => fetch("https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(target)),
+    ];
+
+    let lastErr;
+    for(const attempt of attempts){
+      try {
+        const res = await attempt();
+        if(!res.ok){ lastErr = new Error("코인원 응답 오류 " + res.status); continue; }
+        const data = await res.json();
+        const map = {};
+        (data.tickers || []).forEach(t => { map[t.target_currency.toUpperCase()] = parseFloat(t.last); });
+        return map;
+      } catch(err){
+        lastErr = err;
+      }
+    }
+    throw lastErr || new Error("코인원 응답 실패");
+  }
+
+  function render(){
+    const filtered = rows;
+
+    if(filtered.length === 0){
+      els.table.innerHTML = '<div class="status">불러온 코인이 없습니다.</div>';
+      return;
+    }
+
+    let html = '<table><thead><tr>' +
+      '<th>#</th>' +
+      '<th>코인</th>' +
+      '<th class="num-col">빗썸</th>' +
+      '<th class="num-col">코인원</th>' +
+      '<th class="num-col">거래소 간 차이</th>' +
+      '</tr></thead><tbody>';
+
+    filtered.forEach((r, i) => {
+      const prices = [r.bithumb, r.coinone].filter(p => p !== null && p !== undefined);
+      let gapHtml = '<span class="price missing">-</span>';
+      if(prices.length >= 2){
+        const max = Math.max(...prices);
+        const min = Math.min(...prices);
+        const gapPct = ((max - min) / min) * 100;
+        gapHtml = '<span class="gap-badge">' + gapPct.toFixed(2) + '%</span>';
+      }
+
+      const changeClass = r.change >= 0 ? "up" : "down";
+      const changeSign = r.change >= 0 ? "+" : "";
+
+      const cell = (val) => {
+        const f = formatKRW(val);
+        return f ? '<span class="price num">' + f + '<span class="won">원</span></span>' : '<span class="price missing">-</span>';
+      };
+
+      html += `<tr>
+        <td class="num">${i + 1}</td>
+        <td class="coin-cell"><span class="sym">${r.symbol}</span><span class="kr-name">${r.name || ""}</span></td>
+        <td class="num-col">${cell(r.bithumb)}${r.bithumb !== null && r.bithumb !== undefined ? '<span class="change ' + changeClass + '">' + changeSign + r.change.toFixed(1) + '%</span>' : ''}</td>
+        <td class="num-col">${cell(r.coinone)}</td>
+        <td class="num-col">${gapHtml}</td>
+      </tr>`;
+    });
+
+    html += "</tbody></table>";
+    els.table.innerHTML = html;
+  }
+
+  async function loadAll(){
+    if(isLoading) return; // 중복/겹침 실행 방지
+    isLoading = true;
+    els.refreshBtn.disabled = true;
+    els.refreshBtn.textContent = "갱신 중…";
+    setDot(els.dotBithumb, "loading");
+    setDot(els.dotCoinone, "loading");
+
+    try {
+      let namesMap;
+      try {
+        namesMap = await withRetry(fetchBithumbNames, 2);
+      } catch(err){
+        setDot(els.dotBithumb, "fail");
+        els.table.innerHTML = '<div class="status error">빗썸 마켓 정보를 불러오지 못했습니다. (' + err.message + ') 잠시 후 다시 시도해 주세요.</div>';
+        return;
+      }
+
+      const availableSymbols = new Set(Object.keys(namesMap));
+
+      let symbols, rankingMode;
+      try {
+        const ranked = await fetchMarketCapRanking();
+        const seen = new Set();
+        symbols = [];
+        for(const s of ranked){
+          if(availableSymbols.has(s) && !seen.has(s)){ symbols.push(s); seen.add(s); }
+          if(symbols.length >= TOP_N) break;
+        }
+        if(symbols.length === 0) throw new Error("매칭된 코인 없음");
+        rankingMode = "marketcap";
+      } catch(err){
+        try {
+          const volAll = await withRetry(fetchBithumbVolumeAll, 1);
+          symbols = volAll.filter(r => availableSymbols.has(r.symbol))
+                           .sort((a, b) => b.volume - a.volume)
+                           .slice(0, TOP_N).map(r => r.symbol);
+          rankingMode = "volume";
+        } catch(err2){
+          setDot(els.dotBithumb, "fail");
+          els.table.innerHTML = '<div class="status error">코인 순위 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.</div>';
+          return;
+        }
+      }
+
+      els.subtitle.textContent = rankingMode === "marketcap"
+        ? "글로벌 시가총액 1~" + symbols.length + "위 · 코인원 동시 비교 · KRW 기준"
+        : "시가총액 정보를 불러오지 못해 빗썸 거래대금 순으로 대체 표시 중 · KRW 기준";
+
+      const marketCodes = symbols.map(s => "KRW-" + s);
+
+      let bithumbTicker;
+      try {
+        bithumbTicker = await withRetry(() => fetchBithumbTicker(marketCodes), 2);
+        setDot(els.dotBithumb, "ok");
+      } catch(err){
+        setDot(els.dotBithumb, "fail");
+        els.table.innerHTML = '<div class="status error">빗썸 가격 정보를 불러오지 못했습니다. (' + err.message + ') 잠시 후 다시 시도해 주세요.</div>';
+        return;
+      }
+
+      const coinoneResult = await Promise.allSettled([fetchCoinone()]);
+      const coinoneMap = coinoneResult[0].status === "fulfilled" ? coinoneResult[0].value : {};
+      setDot(els.dotCoinone, coinoneResult[0].status === "fulfilled" ? "ok" : "fail");
+
+      rows = symbols.map(s => ({
+        symbol: s,
+        name: namesMap[s] || "",
+        change: bithumbTicker[s]?.change ?? 0,
+        bithumb: bithumbTicker[s]?.price ?? null,
+        coinone: coinoneMap[s] ?? null,
+      }));
+
+      els.updatedAt.textContent = new Date().toLocaleTimeString("ko-KR");
+      render();
+    } finally {
+      isLoading = false;
+      els.refreshBtn.disabled = false;
+      els.refreshBtn.textContent = "지금 새로고침";
+    }
+  }
+
+  els.refreshBtn.addEventListener("click", loadAll);
+
+  loadAll();
+  setInterval(loadAll, REFRESH_MS);
+})();
+</script>
+
+</body>
+</html>
